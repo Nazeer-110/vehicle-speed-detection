@@ -123,7 +123,13 @@ def process_video(input_video, target_width=640):
     height = height if height % 2 == 0 else height + 1
 
     ffmpeg_path = shutil.which("ffmpeg")
-    use_ffmpeg = ffmpeg_path is not None
+    use_ffmpeg = False
+    if ffmpeg_path:
+        try:
+            sp.run([ffmpeg_path, "-version"], capture_output=True, check=True)
+            use_ffmpeg = True
+        except Exception:
+            use_ffmpeg = False
 
     if use_ffmpeg:
         cmd = [
