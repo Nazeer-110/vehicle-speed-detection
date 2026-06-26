@@ -14,7 +14,7 @@ YOLOv8 + custom IOU tracker based vehicle detection, tracking, and speed estimat
 ## Try It
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io/cloud)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Nazeer-110/vehicle-speed-detection)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/nazeer-ahmed-cs/vehicle-speed-detection)
 
 ## Requirements
 
@@ -26,7 +26,7 @@ YOLOv8 + custom IOU tracker based vehicle detection, tracking, and speed estimat
 ## Installation
 
 ```bash
-git clone https://github.com/Nazeer-110/vehicle-speed-detection.git
+git clone https://github.com/nazeer-ahmed-cs/vehicle-speed-detection.git
 cd vehicle-speed-detection
 pip install -r requirements.txt
 ```
