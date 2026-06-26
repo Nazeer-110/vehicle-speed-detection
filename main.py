@@ -16,7 +16,14 @@ VEHICLE_CLASSES = {
     7: "Truck"
 }
 
-model = YOLO(MODEL_PATH)
+_model = None
+
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = YOLO(MODEL_PATH)
+    return _model
 
 
 def get_browser_compatible_writer(output_path, fourcc_str, fps, width, height):
@@ -90,7 +97,7 @@ def process_video(input_video, target_width=640):
 
         frame = cv2.resize(frame, (width, height))
 
-        results = model.track(frame, persist=True, tracker="bytetrack.yaml")
+        results = get_model().track(frame, persist=True, tracker="bytetrack.yaml")
         boxes = results[0].boxes
 
         if boxes is not None and boxes.id is not None:
