@@ -3,6 +3,7 @@ import time
 import csv
 import os
 import numpy as np
+import imageio
 from ultralytics import YOLO
 
 MODEL_PATH = "yolov8n.pt"
@@ -85,27 +86,6 @@ class Tracker:
         return detections
 
 
-def get_browser_compatible_writer(output_path, fourcc_str, fps, width, height):
-    fourcc = cv2.VideoWriter_fourcc(*fourcc_str)
-    writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-    if writer.isOpened():
-        return writer, fourcc_str
-    writer.release()
-    return None, None
-
-
-def create_video_writer(output_path, fps, width, height):
-    codecs = ["avc1", "H264", "mp4v"]
-    for codec in codecs:
-        writer, used = get_browser_compatible_writer(
-            output_path, codec, fps, width, height
-        )
-        if writer is not None:
-            return writer, used
-    fallback = cv2.VideoWriter_fourcc(*"mp4v")
-    return cv2.VideoWriter(output_path, fallback, fps, (width, height)), "mp4v"
-
-
 def validate_video(path):
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
@@ -141,14 +121,20 @@ def process_video(input_video, target_width=640):
     height = int(orig_height * (target_width / orig_width))
     height = height if height % 2 == 0 else height + 1
 
-    writer, used_codec = create_video_writer(output_video, fps, width, height)
-
     tracker = Tracker()
     vehicle_positions = {}
 
     csv_out = open(csv_file, "w", newline="")
     csv_writer = csv.writer(csv_out)
     csv_writer.writerow(["Vehicle_ID", "Type", "Speed_km_h"])
+
+    writer = imageio.get_writer(
+        output_video,
+        fps=fps,
+        codec="libx264",
+        quality=8,
+        pixelformat="yuv420p"
+    )
 
     while True:
         ret, frame = cap.read()
@@ -203,10 +189,10 @@ def process_video(input_video, target_width=640):
 
             csv_writer.writerow([vehicle_id, VEHICLE_CLASSES[cls], round(speed, 2)])
 
-        writer.write(frame)
+        writer.append_data(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
     cap.release()
-    writer.release()
     csv_out.close()
+    writer.close()
 
-    return output_video, csv_file
+    return output_video, csv_file, "H.264 (libx264)"

@@ -3,3 +3,5 @@ ultralytics
 numpy
 pandas
 streamlit
+imageio
+imageio-ffmpeg

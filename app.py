@@ -1,5 +1,7 @@
 import streamlit as st
 import os
+import cv2
+from pathlib import Path
 from main import process_video, validate_video
 
 st.set_page_config(
@@ -11,25 +13,18 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .video-container {
-        max-width: 700px;
-        margin: 0 auto;
-    }
-    .video-container video {
-        width: 100%;
-        height: auto;
+    video {
+        max-width: 700px !important;
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        margin: 1rem auto !important;
         border-radius: 8px;
     }
     .stVideo {
         max-width: 700px;
         margin: 0 auto;
         display: block;
-    }
-    video {
-        max-width: 700px !important;
-        display: block !important;
-        margin: 0 auto !important;
-        height: auto !important;
     }
     .block-container {
         max-width: 900px;
@@ -40,15 +35,10 @@ st.markdown(
 )
 
 st.title("🚗 AI Vehicle Speed Detection System")
-st.write("YOLOv8 + ByteTrack based vehicle detection, tracking and speed estimation.")
+st.write("YOLOv8 based vehicle detection, tracking and speed estimation.")
 
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("output", exist_ok=True)
-
-
-def get_video_bytes(path):
-    with open(path, "rb") as f:
-        return f.read()
 
 
 def validate_uploaded_video(path):
@@ -65,10 +55,11 @@ def validate_uploaded_video(path):
     return info
 
 
-def centered_video(video_bytes):
+def centered_video(path):
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.video(video_bytes, format="video/mp4")
+        abs_path = os.path.abspath(path)
+        st.video(abs_path)
 
 
 uploaded_file = st.file_uploader(
@@ -86,8 +77,7 @@ if uploaded_file:
 
     video_info = validate_uploaded_video(input_path)
     if video_info:
-        preview_bytes = get_video_bytes(input_path)
-        centered_video(preview_bytes)
+        centered_video(input_path)
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Resolution", f"{video_info['width']}x{video_info['height']}")
@@ -99,10 +89,10 @@ if uploaded_file:
                 progress_bar = st.progress(0, text="Initializing...")
                 status_text = st.empty()
 
-                status_text.info("Processing video with YOLOv8 + ByteTrack...")
+                status_text.info("Processing video with YOLOv8...")
                 progress_bar.progress(20, text="Running detection...")
 
-                output_video, csv_file = process_video(
+                output_video, csv_file, used_codec = process_video(
                     input_video=input_path, target_width=640
                 )
 
@@ -116,7 +106,7 @@ if uploaded_file:
                 st.subheader("Processed Video")
                 if os.path.exists(output_video):
                     file_size_mb = os.path.getsize(output_video) / (1024 * 1024)
-                    st.info(f"Output size: {file_size_mb:.2f} MB | Codec: H.264")
+                    st.info(f"Output: {file_size_mb:.2f} MB | Codec: {used_codec}")
 
                     output_info = validate_video(output_video)
                     if output_info["valid"]:
@@ -126,19 +116,26 @@ if uploaded_file:
                             f"| {output_info['frame_count']} frames"
                         )
 
-                    output_bytes = get_video_bytes(output_video)
-                    centered_video(output_bytes)
+                    centered_video(output_video)
+
+                    with open(output_video, "rb") as f:
+                        st.download_button(
+                            label="📥 Download Output Video",
+                            data=f,
+                            file_name="processed_traffic.mp4",
+                            mime="video/mp4"
+                        )
                 else:
                     st.error("Output video not found!")
 
                 if os.path.exists(csv_file):
-                    csv_bytes = get_video_bytes(csv_file)
-                    st.download_button(
-                        label="📥 Download Speed Report CSV",
-                        data=csv_bytes,
-                        file_name="speed_log.csv",
-                        mime="text/csv"
-                    )
+                    with open(csv_file, "rb") as f:
+                        st.download_button(
+                            label="📥 Download Speed Report CSV",
+                            data=f,
+                            file_name="speed_log.csv",
+                            mime="text/csv"
+                        )
 
             except Exception as e:
                 st.error(f"Error: {e}")
