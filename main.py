@@ -3,7 +3,6 @@ import time
 import csv
 import os
 import numpy as np
-import imageio
 from ultralytics import YOLO
 
 MODEL_PATH = "yolov8n.pt"
@@ -121,20 +120,22 @@ def process_video(input_video, target_width=640):
     height = int(orig_height * (target_width / orig_width))
     height = height if height % 2 == 0 else height + 1
 
+    for codec in ["avc1", "H264", "mp4v"]:
+        fourcc = cv2.VideoWriter_fourcc(*codec)
+        writer = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
+        if writer.isOpened():
+            used_codec = codec
+            break
+        writer.release()
+    else:
+        raise RuntimeError("No usable video codec found")
+
     tracker = Tracker()
     vehicle_positions = {}
 
     csv_out = open(csv_file, "w", newline="")
     csv_writer = csv.writer(csv_out)
     csv_writer.writerow(["Vehicle_ID", "Type", "Speed_km_h"])
-
-    writer = imageio.get_writer(
-        output_video,
-        fps=fps,
-        codec="libx264",
-        quality=8,
-        pixelformat="yuv420p"
-    )
 
     while True:
         ret, frame = cap.read()
@@ -150,13 +151,9 @@ def process_video(input_video, target_width=640):
         if boxes_data is not None and boxes_data.cls is not None:
             classes = boxes_data.cls.cpu().numpy().astype(int)
             coordinates = boxes_data.xyxy.cpu().numpy()
-
             for cls, box in zip(classes, coordinates):
                 if cls in VEHICLE_CLASSES:
-                    detections.append({
-                        "box": box,
-                        "cls": cls
-                    })
+                    detections.append({"box": box, "cls": cls})
 
         detections = tracker.update(detections)
 
@@ -180,19 +177,17 @@ def process_video(input_video, target_width=640):
             vehicle_positions[vehicle_id] = (center_x, center_y, current_time)
 
             label = f"{VEHICLE_CLASSES[cls]} ID:{vehicle_id} {speed:.1f} km/h"
-
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(
                 frame, label, (x1, y1 - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2
             )
-
             csv_writer.writerow([vehicle_id, VEHICLE_CLASSES[cls], round(speed, 2)])
 
-        writer.append_data(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        writer.write(frame)
 
     cap.release()
+    writer.release()
     csv_out.close()
-    writer.close()
 
-    return output_video, csv_file, "H.264 (libx264)"
+    return output_video, csv_file, used_codec

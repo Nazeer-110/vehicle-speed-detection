@@ -1,7 +1,5 @@
 import streamlit as st
 import os
-import cv2
-from pathlib import Path
 from main import process_video, validate_video
 
 st.set_page_config(
@@ -35,7 +33,7 @@ st.markdown(
 )
 
 st.title("🚗 AI Vehicle Speed Detection System")
-st.write("YOLOv8 based vehicle detection, tracking and speed estimation.")
+st.caption("YOLOv8 based vehicle detection, tracking and speed estimation.")
 
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("output", exist_ok=True)
@@ -55,13 +53,6 @@ def validate_uploaded_video(path):
     return info
 
 
-def centered_video(path):
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        abs_path = os.path.abspath(path)
-        st.video(abs_path)
-
-
 uploaded_file = st.file_uploader(
     "Upload Traffic Video",
     type=["mp4", "avi", "mov"]
@@ -73,22 +64,23 @@ if uploaded_file:
         f.write(uploaded_file.getbuffer())
 
     st.success("✅ Video uploaded successfully")
-    st.subheader("Original Video")
 
     video_info = validate_uploaded_video(input_path)
     if video_info:
-        centered_video(input_path)
+        st.subheader("Original Video")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.video(input_path)
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Resolution", f"{video_info['width']}x{video_info['height']}")
-        col2.metric("FPS", f"{video_info['fps']:.2f}")
-        col3.metric("Frames", video_info["frame_count"])
+        meta_cols = st.columns(3)
+        meta_cols[0].metric("Resolution", f"{video_info['width']}x{video_info['height']}")
+        meta_cols[1].metric("FPS", f"{video_info['fps']:.2f}")
+        meta_cols[2].metric("Frames", video_info["frame_count"])
 
         if st.button("🚀 Start Detection"):
             try:
                 progress_bar = st.progress(0, text="Initializing...")
                 status_text = st.empty()
-
                 status_text.info("Processing video with YOLOv8...")
                 progress_bar.progress(20, text="Running detection...")
 
@@ -96,10 +88,8 @@ if uploaded_file:
                     input_video=input_path, target_width=640
                 )
 
-                progress_bar.progress(80, text="Finalizing output...")
-
-                st.success("✅ Processing Completed!")
                 progress_bar.progress(100, text="Done!")
+                st.success("✅ Processing Completed!")
                 progress_bar.empty()
                 status_text.empty()
 
@@ -116,7 +106,9 @@ if uploaded_file:
                             f"| {output_info['frame_count']} frames"
                         )
 
-                    centered_video(output_video)
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        st.video(output_video)
 
                     with open(output_video, "rb") as f:
                         st.download_button(
